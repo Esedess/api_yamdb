@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django.db.models import Avg
 from rest_framework import serializers
 
@@ -24,10 +26,9 @@ class TitleSerializer(serializers.ModelSerializer):
     rating = serializers.SerializerMethodField()
 
     def get_rating(self, obj):
-        reviews = obj.reviews
-        print(reviews)
         rating = obj.reviews.aggregate(
             average_score=Avg('score')).get('average_score')
+
         return rating
 
     class Meta:
@@ -45,13 +46,27 @@ class TitleSerializer(serializers.ModelSerializer):
 
 class TitleCreateUpdateSerializer(serializers.ModelSerializer):
     genre = serializers.SlugRelatedField(
-        many=True, slug_field='slug',
+        many=True,
+        slug_field='slug',
         queryset=Genre.objects.all()
     )
     category = serializers.SlugRelatedField(
         slug_field='slug',
         queryset=Categorу.objects.all()
     )
+
+    def validate_year(self, value):
+        """
+        The year must be less than the current year..
+        """
+        current_year = datetime.today().year
+        if value > current_year:
+            message = (
+                'Нельзя добавлять произведения, которые еще не вышли.'
+                'Год выпуска не может быть больше текущего.')
+            raise serializers.ValidationError(message)
+
+        return value
 
     class Meta:
         model = Title
@@ -67,7 +82,6 @@ class ReviewSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Review
-        # fields = '__all__'
         fields = (
             'id',
             'text',
@@ -85,5 +99,10 @@ class CommentSerializer(serializers.ModelSerializer):
     )
 
     class Meta:
-        fields = '__all__'
         model = Comment
+        fields = (
+            'id',
+            'text',
+            'author',
+            'pub_date',
+        )

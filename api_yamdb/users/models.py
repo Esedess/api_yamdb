@@ -28,6 +28,7 @@ class CustomUserManager(BaseUserManager):
 
         user.set_password(password)
         user.save()
+
         return user
 
     def create_superuser(self, username, email, password, **other_fields):
@@ -55,12 +56,51 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         ('admin', 'Admin'),
     )
     confirmation_code = models.UUIDField(default=uuid.uuid4, editable=False)
-    username = models.CharField(max_length=150, unique=True)
-    email = models.EmailField(max_length=150, unique=True)
-    role = models.CharField(max_length=9, choices=ROLE_CHOICES, default='user')
-    first_name = models.CharField(max_length=150, blank=True)
-    last_name = models.CharField(max_length=150, blank=True)
-    bio = models.CharField(max_length=500, blank=True)
+    username = models.CharField(
+        max_length=150,
+        unique=True,
+        verbose_name='Имя пользователя',
+        help_text=(
+            'Обязательное поле! 150 символов или меньше.'
+            'Только буквы, цифры и @/./+/-/_.'
+            'Использовать имя "me" в качестве username запрещено.'
+        )
+    )
+    email = models.EmailField(
+        max_length=254,
+        unique=True,
+        verbose_name='eMail',
+        help_text='Обязательное поле! Введите действительный email.'
+    )
+    role = models.CharField(
+        max_length=9,
+        choices=ROLE_CHOICES,
+        default='user',
+        verbose_name='Роль',
+        help_text=(
+            'Роль пользователя на ресурсе.'
+            'User, Moderator или Admin'
+            'Изменить роль может только Admin'
+        )
+    )
+    first_name = models.CharField(
+        max_length=150,
+        blank=True,
+        verbose_name='Имя',
+        help_text='Ваше имя.'
+    )
+    last_name = models.CharField(
+        max_length=150,
+        blank=True,
+        verbose_name='Фамилия',
+        help_text='Ваша фамилия.'
+    )
+    bio = models.CharField(
+        max_length=500,
+        blank=True,
+        verbose_name='О себе',
+        help_text='Расскажите немного о себе.'
+    )
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
 
@@ -71,6 +111,8 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     class Meta:
         ordering = ('-id',)
+        verbose_name = 'Пользователь'
+        verbose_name_plural = 'Пользователи'
 
     def __str__(self):
         return self.username

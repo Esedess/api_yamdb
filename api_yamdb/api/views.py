@@ -9,9 +9,7 @@ from .serializers import (
     TitleCreateUpdateSerializer, TitleSerializer,
 )
 from reviews.models import Categorу, Genre, Review, Title
-from users.permissions import (  # IsAdminOnly,
-    IsAdminOrReadOnly, IsOwnerOrStaffOrReadOnly,
-)
+from users.permissions import IsAdminOrReadOnly, IsOwnerOrStaffOrReadOnly
 
 
 class CategorуViewSet(
@@ -23,8 +21,8 @@ class CategorуViewSet(
     queryset = Categorу.objects.all()
     serializer_class = CategorуSerializer
     permission_classes = (IsAdminOrReadOnly, )
-    filter_backends = (filters.SearchFilter,)
-    search_fields = ('name',)
+    filter_backends = (filters.SearchFilter, )
+    search_fields = ('name', )
     lookup_field = 'slug'
 
 
@@ -37,15 +35,15 @@ class GenreViewSet(
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
     permission_classes = (IsAdminOrReadOnly, )
-    filter_backends = (filters.SearchFilter,)
-    search_fields = ('name',)
+    filter_backends = (filters.SearchFilter, )
+    search_fields = ('name', )
     lookup_field = 'slug'
 
 
 class TitleViewSet(viewsets.ModelViewSet):
     serializer_class = TitleSerializer
     permission_classes = (IsAdminOrReadOnly, )
-    filter_backends = (DjangoFilterBackend,)
+    filter_backends = (DjangoFilterBackend, )
     filterset_class = TitleFilter
 
     def get_queryset(self):
@@ -53,7 +51,9 @@ class TitleViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         if self.action in ('create', 'partial_update'):
+
             return TitleCreateUpdateSerializer
+
         return TitleSerializer
 
 
@@ -64,13 +64,15 @@ class ReviewViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         title_id = self.kwargs.get('title_id')
         title = get_object_or_404(Title, id=title_id)
+
         return title.reviews.all()
 
     def perform_create(self, serializer):
         title_id = self.kwargs.get('title_id')
-        title_obj = get_object_or_404(Title, id=title_id)
+        title = get_object_or_404(Title, id=title_id)
+
         try:
-            serializer.save(author=self.request.user, title=title_obj)
+            serializer.save(author=self.request.user, title=title)
         except IntegrityError:
             message = 'Вы уже оставляли отзыв'
             raise serializers.ValidationError(message)
@@ -81,18 +83,17 @@ class CommentViewSet(viewsets.ModelViewSet):
     permission_classes = (IsOwnerOrStaffOrReadOnly, )
 
     def get_queryset(self):
-        review_id = get_object_or_404(
-            Review,
-            pk=self.kwargs.get('review_id')
-        )
-        return review_id.comments.all()
+        review_id = self.kwargs.get('review_id')
+        review = get_object_or_404(Review, id=review_id)
+
+        return review.comments.all()
 
     def perform_create(self, serializer):
         title_id = self.kwargs.get('title_id')
         review_id = self.kwargs.get('review_id')
-        review_obj = get_object_or_404(
+        review = get_object_or_404(
             Review,
             id=review_id,
             title_id=title_id
         )
-        serializer.save(author=self.request.user, review_id=review_obj)
+        serializer.save(author=self.request.user, review=review)

@@ -18,25 +18,16 @@ def signup_user(request):
     If the user is already in the database
     sends a confirmation code to the user's email again.
     """
-    user = user_check(request)
-    if user:
-        confirmation_code = user.confirmation_code
-        email = user.email
-        send_confirmation_code(email, confirmation_code)
-
-        return Response('Check your email', status=status.HTTP_200_OK)
-
     serializer = UserSerializer(data=request.data)
+
     if serializer.is_valid():
-        serializer.save()
-        email = serializer.validated_data.get('email')
-        confirmation_code = serializer.data.get('confirmation_code')
-        send_confirmation_code(email, confirmation_code)
+        user = user_check(serializer.validated_data)
+        send_confirmation_code(user)
 
         return Response(
-            serializer.validated_data,
-            status=status.HTTP_200_OK,
+            serializer.validated_data, status=status.HTTP_200_OK,
         )
+
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -48,20 +39,25 @@ def user_token(request):
     Checks the user in the database by username, checks the confirmation code.
     """
     serializer = TokenSerializer(data=request.data)
+
     if serializer.is_valid():
         username = serializer.validated_data.get('username')
         confirmation_code = serializer.validated_data.get('confirmation_code')
+
         try:
             user = CustomUser.objects.get(username=username)
         except CustomUser.DoesNotExist:
             message = 'Пользователя с таким username не существует'
             raise exceptions.NotFound(message)
+
         if confirmation_code != str(user.confirmation_code):
             message = 'Не верный код'
             raise serializers.ValidationError(message)
+
         token = get_tokens_for_user(user)
 
         return Response(token, status=status.HTTP_201_CREATED)
+
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -78,6 +74,7 @@ class UsersViewSet(viewsets.ModelViewSet):
         If new user is Admin puts is_staff = True.
         """
         role = serializer.validated_data.get('role')
+
         if role == 'admin':
             serializer.save(is_staff=True)
         else:
@@ -90,13 +87,14 @@ class UsersViewSet(viewsets.ModelViewSet):
         If the user has stopped being an Admin, put is_staff = False.
         """
         role = serializer.validated_data.get('role')
+
         if role == 'admin':
             serializer.save(is_staff=True)
         else:
             serializer.save(is_staff=False)
 
-    @action(methods=['get', 'PATCH'],
-            detail=False, permission_classes=[permissions.IsAuthenticated],
+    @action(methods=['get', 'PATCH'], detail=False,
+            permission_classes=[permissions.IsAuthenticated],
             url_path='me', url_name='me_patch')
     def me_retrieve(self, request, *args, **kwargs):
         """

@@ -8,12 +8,12 @@ class CharFilterInFilter(filters.CharFilter, filters.BaseInFilter):
 
 
 class TitleFilter(filters.FilterSet):
-    genre = CharFilterInFilter(field_name="genre__slug", lookup_expr='in')
+    genre = CharFilterInFilter(field_name='genre__slug', lookup_expr='in')
     category = CharFilterInFilter(
-        field_name="category__slug", lookup_expr='in'
+        field_name='category__slug', lookup_expr='in'
     )
-    year = filters.CharFilter(field_name="year", lookup_expr='icontains')
-    name = filters.CharFilter(field_name="name", lookup_expr='icontains')
+    year = filters.CharFilter(field_name='year', lookup_expr='icontains')
+    name = filters.CharFilter(field_name='name', lookup_expr='icontains')
 
     class Meta:
         model = Title

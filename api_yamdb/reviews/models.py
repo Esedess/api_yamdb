@@ -16,7 +16,7 @@ class Categorу(models.Model):
     )
 
     class Meta:
-        ordering = ['name']
+        ordering = ('name', )
         verbose_name = 'Категория'
         verbose_name_plural = 'Категории'
 
@@ -35,7 +35,7 @@ class Genre(models.Model):
     )
 
     class Meta:
-        ordering = ['name']
+        ordering = ('name', )
         verbose_name = 'Жанр'
         verbose_name_plural = 'Жанры'
 
@@ -73,7 +73,7 @@ class Title(models.Model):
     )
 
     class Meta:
-        ordering = ['name']
+        ordering = ('name', )
         verbose_name = 'Произведение'
         verbose_name_plural = 'Произведения'
 
@@ -119,11 +119,11 @@ class Review(models.Model):
     )
     score = models.PositiveSmallIntegerField(
         verbose_name='Рейтинг',
-        # default=0,
-        validators=[
+        default=0,
+        validators=(
             MaxValueValidator(10, 'Значения рейтинга от 1 до 10'),
             MinValueValidator(1, 'Значения рейтинга от 1 до 10')
-        ]
+        )
     )
     pub_date = models.DateTimeField(
         verbose_name='Дата публикации',
@@ -131,12 +131,12 @@ class Review(models.Model):
     )
 
     class Meta:
-        ordering = ['pub_date']
+        ordering = ('pub_date', )
         verbose_name = 'Отзыв'
         verbose_name_plural = 'Отзывы'
         constraints = [
             models.UniqueConstraint(
-                fields=['author', 'title_id'],
+                fields=('author', 'title_id'),
                 name='unique_title_id'
             )
         ]
@@ -146,7 +146,7 @@ class Review(models.Model):
 
 
 class Comment(models.Model):
-    review_id = models.ForeignKey(
+    review = models.ForeignKey(
         Review,
         verbose_name='Отзыв',
         on_delete=models.CASCADE,
@@ -167,7 +167,7 @@ class Comment(models.Model):
     )
 
     class Meta:
-        ordering = ['pub_date']
+        ordering = ('pub_date', )
         verbose_name = 'Комментарий'
         verbose_name_plural = 'Комментарии'
 
