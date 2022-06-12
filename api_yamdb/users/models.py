@@ -1,118 +1,77 @@
-import uuid
-
-from django.contrib.auth.models import (
-    AbstractBaseUser, BaseUserManager, PermissionsMixin,
-)
+from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.validators import ASCIIUsernameValidator
 from django.db import models
 
 
-class CustomUserManager(BaseUserManager):
-    def create_user(self, username, email, password, **other_fields):
-        if not email:
-            raise ValueError('Users must have an email address')
-
-        if username == 'me':
-            raise ValueError('"me" is not allowed as a username')
-
-        email = self.normalize_email(email)
-        role = other_fields.get('role')
-
-        if role == 'admin':
-            other_fields.setdefault('is_staff', True)
-
-        user = self.model(
-            username=username,
-            email=email,
-            **other_fields,
-        )
-
-        user.set_password(password)
-        user.save()
-
-        return user
-
-    def create_superuser(self, username, email, password, **other_fields):
-        other_fields.setdefault('role', 'admin')
-        other_fields.setdefault('is_staff', True)
-        other_fields.setdefault('is_superuser', True)
-        other_fields.setdefault('is_active', True)
-
-        if other_fields.get('is_staff') is not True:
-            raise ValueError(
-                'Superuser is_staff mast be True'
-            )
-        if other_fields.get('is_superuser') is not True:
-            raise ValueError(
-                'Superuser is_superuser mast be True'
-            )
-
-        return self.create_user(username, email, password, **other_fields)
-
-
-class CustomUser(AbstractBaseUser, PermissionsMixin):
+class CustomUser(AbstractUser):
+    USER = 'user'
+    MODERATOR = 'moderator'
+    ADMIN = 'admin'
     ROLE_CHOICES = (
-        ('user', 'User'),
-        ('moderator', 'Moderator'),
-        ('admin', 'Admin'),
+        (USER, 'Пользователь'),
+        (MODERATOR, 'Модератор'),
+        (ADMIN, 'Администратор'),
     )
-    confirmation_code = models.UUIDField(default=uuid.uuid4, editable=False)
+    username_validator = ASCIIUsernameValidator()
     username = models.CharField(
+        'Имя пользователя',
         max_length=150,
         unique=True,
-        verbose_name='Имя пользователя',
         help_text=(
-            'Обязательное поле! 150 символов или меньше.'
-            'Только буквы, цифры и @/./+/-/_.'
-            'Использовать имя "me" в качестве username запрещено.'
-        )
+            'Обязательное поле. 150 символов или меньше.'
+            'Только буквы, цифры и @/./+/-/_'),
+        validators=[username_validator],
+        error_messages={
+            'unique': 'Пользователь с таким именем уже существует.',
+        },
     )
     email = models.EmailField(
-        max_length=254,
+        'Адрес электронной почты',
         unique=True,
-        verbose_name='eMail',
-        help_text='Обязательное поле! Введите действительный email.'
+        error_messages={
+            'unique': 'Пользователь с такой почтой уже существует.',
+        },
+    )
+    confirmation_code = models.CharField(
+        max_length=20,
     )
     role = models.CharField(
-        max_length=9,
+        'Роль',
+        max_length=max(len(role[0]) for role in ROLE_CHOICES),
         choices=ROLE_CHOICES,
-        default='user',
-        verbose_name='Роль',
+        default=USER,
         help_text=(
             'Роль пользователя на ресурсе.'
             'User, Moderator или Admin'
             'Изменить роль может только Admin'
         )
     )
-    first_name = models.CharField(
-        max_length=150,
+    bio = models.TextField(
+        'О себе',
         blank=True,
-        verbose_name='Имя',
-        help_text='Ваше имя.'
-    )
-    last_name = models.CharField(
-        max_length=150,
-        blank=True,
-        verbose_name='Фамилия',
-        help_text='Ваша фамилия.'
-    )
-    bio = models.CharField(
-        max_length=500,
-        blank=True,
-        verbose_name='О себе',
         help_text='Расскажите немного о себе.'
     )
-    is_staff = models.BooleanField(default=False)
-    is_active = models.BooleanField(default=True)
-
-    objects = CustomUserManager()
-
-    USERNAME_FIELD = 'username'
-    REQUIRED_FIELDS = ('email',)
 
     class Meta:
-        ordering = ('-id',)
+        ordering = ('-date_joined',)
         verbose_name = 'Пользователь'
         verbose_name_plural = 'Пользователи'
+        constraints = [
+            models.UniqueConstraint(
+                fields=('username', 'email'),
+                name='unique_user'
+            )
+        ]
+
+    @property
+    def is_admin(self):
+        """Superuser is always an admin and a moderator."""
+        return self.role == self.ADMIN or self.is_staff or self.is_superuser
+
+    @property
+    def is_moderator(self):
+        """The admin is always a moderator."""
+        return self.role == self.MODERATOR or self.role == self.ADMIN
 
     def __str__(self):
         return self.username

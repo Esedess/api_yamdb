@@ -1,9 +1,81 @@
 from datetime import datetime
 
-from django.db.models import Avg
+from django.contrib.auth import get_user_model
+from django.contrib.auth.validators import ASCIIUsernameValidator
 from rest_framework import serializers
+from rest_framework.validators import UniqueValidator
 
 from reviews.models import Categorу, Comment, Genre, Review, Title
+
+User = get_user_model()
+
+
+class UsernameSerializer(serializers.Serializer):
+    username = serializers.CharField(
+        required=True,
+        max_length=150,
+        validators=(
+            ASCIIUsernameValidator(),
+        ),
+        allow_null=False,
+        allow_blank=False,
+    )
+
+    def validate_username(self, value):
+        """
+        "me" is not allowed as a username.
+        """
+        if value.lower() == 'me':
+            message = f"Enter a valid username. '{value}' is not allowed."
+            raise serializers.ValidationError(message)
+
+        return value
+
+
+class SignUpSerializer(UsernameSerializer):
+    email = serializers.EmailField(
+        required=True,
+        max_length=254,
+        allow_null=False,
+        allow_blank=False,
+    )
+
+
+class UserSerializer(SignUpSerializer, serializers.ModelSerializer):
+    username = serializers.CharField(
+        required=True,
+        max_length=150,
+        validators=(
+            ASCIIUsernameValidator(),
+            UniqueValidator(queryset=User.objects.all()),
+        ),
+        allow_null=False,
+        allow_blank=False,
+    )
+    email = serializers.EmailField(
+        required=True,
+        max_length=254,
+        validators=(
+            UniqueValidator(queryset=User.objects.all()),
+        ),
+        allow_null=False,
+        allow_blank=False,
+    )
+
+    class Meta:
+        fields = (
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'bio',
+            'role',
+        )
+        model = User
+
+
+class TokenSerializer(UsernameSerializer):
+    confirmation_code = serializers.CharField(allow_blank=False)
 
 
 class CategorуSerializer(serializers.ModelSerializer):
@@ -23,17 +95,20 @@ class GenreSerializer(serializers.ModelSerializer):
 class TitleSerializer(serializers.ModelSerializer):
     genre = GenreSerializer(many=True)
     category = CategorуSerializer()
-    rating = serializers.SerializerMethodField()
-
-    def get_rating(self, obj):
-        rating = obj.reviews.aggregate(
-            average_score=Avg('score')).get('average_score')
-
-        return rating
+    rating = serializers.FloatField()
 
     class Meta:
         model = Title
         fields = (
+            'id',
+            'name',
+            'year',
+            'rating',
+            'description',
+            'genre',
+            'category',
+        )
+        read_only_fields = (
             'id',
             'name',
             'year',
@@ -56,21 +131,24 @@ class TitleCreateUpdateSerializer(serializers.ModelSerializer):
     )
 
     def validate_year(self, value):
-        """
-        The year must be less than the current year..
-        """
         current_year = datetime.today().year
         if value > current_year:
             message = (
                 'Нельзя добавлять произведения, которые еще не вышли.'
-                'Год выпуска не может быть больше текущего.')
+                f'Год выпуска {value} не может быть больше текущего.')
             raise serializers.ValidationError(message)
-
         return value
 
     class Meta:
         model = Title
-        fields = '__all__'
+        fields = (
+            'id',
+            'name',
+            'year',
+            'description',
+            'genre',
+            'category'
+        )
 
 
 class ReviewSerializer(serializers.ModelSerializer):
@@ -79,6 +157,18 @@ class ReviewSerializer(serializers.ModelSerializer):
         read_only=True,
         default=serializers.CurrentUserDefault(),
     )
+
+    def validate(self, data):
+        title_id = self.context['view'].kwargs.get('title_id')
+        user = self.context['request'].user
+        if self.context['request'].method == 'PATCH':
+            return data
+        if Review.objects.filter(
+            title=title_id,
+            author=user
+        ).exists():
+            raise serializers.ValidationError('Вы уже оставили отзыв.')
+        return data
 
     class Meta:
         model = Review
