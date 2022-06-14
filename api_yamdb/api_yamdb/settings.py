@@ -28,7 +28,6 @@ INSTALLED_APPS = [
     'django_filters',
     'api',
     'reviews',
-    'users',
 ]
 
 MIDDLEWARE = [
@@ -75,7 +74,7 @@ DATABASES = {
 
 # Password validation
 
-AUTH_USER_MODEL = 'users.CustomUser'
+AUTH_USER_MODEL = 'reviews.User'
 
 AUTH_PASSWORD_VALIDATORS = [
     {

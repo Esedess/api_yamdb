@@ -1,66 +1,32 @@
-from datetime import datetime
-
-from django.contrib.auth import get_user_model
-from django.contrib.auth.validators import ASCIIUsernameValidator
 from rest_framework import serializers
-from rest_framework.validators import UniqueValidator
 
-from reviews.models import Categorу, Comment, Genre, Review, Title
-
-User = get_user_model()
+from reviews.models import Categorу, Comment, Genre, Review, Title, User
+from reviews.validators import username_validator, year_validator
 
 
-class UsernameSerializer(serializers.Serializer):
-    username = serializers.CharField(
-        required=True,
-        max_length=150,
-        validators=(
-            ASCIIUsernameValidator(),
-        ),
-        allow_null=False,
-        allow_blank=False,
-    )
+class UsernameValidationMixin():
 
     def validate_username(self, value):
-        """
-        "me" is not allowed as a username.
-        """
-        if value.lower() == 'me':
-            message = f"Enter a valid username. '{value}' is not allowed."
-            raise serializers.ValidationError(message)
-
+        username_validator(value)
         return value
 
 
-class SignUpSerializer(UsernameSerializer):
-    email = serializers.EmailField(
-        required=True,
-        max_length=254,
-        allow_null=False,
-        allow_blank=False,
-    )
-
-
-class UserSerializer(SignUpSerializer, serializers.ModelSerializer):
+class SignUpSerializer(UsernameValidationMixin, serializers.Serializer):
     username = serializers.CharField(
         required=True,
         max_length=150,
-        validators=(
-            ASCIIUsernameValidator(),
-            UniqueValidator(queryset=User.objects.all()),
-        ),
         allow_null=False,
         allow_blank=False,
     )
     email = serializers.EmailField(
         required=True,
         max_length=254,
-        validators=(
-            UniqueValidator(queryset=User.objects.all()),
-        ),
         allow_null=False,
         allow_blank=False,
     )
+
+
+class UserSerializer(UsernameValidationMixin, serializers.ModelSerializer):
 
     class Meta:
         fields = (
@@ -74,7 +40,13 @@ class UserSerializer(SignUpSerializer, serializers.ModelSerializer):
         model = User
 
 
-class TokenSerializer(UsernameSerializer):
+class TokenSerializer(UsernameValidationMixin, serializers.Serializer):
+    username = serializers.CharField(
+        required=True,
+        max_length=150,
+        allow_null=False,
+        allow_blank=False,
+    )
     confirmation_code = serializers.CharField(allow_blank=False)
 
 
@@ -131,12 +103,7 @@ class TitleCreateUpdateSerializer(serializers.ModelSerializer):
     )
 
     def validate_year(self, value):
-        current_year = datetime.today().year
-        if value > current_year:
-            message = (
-                'Нельзя добавлять произведения, которые еще не вышли.'
-                f'Год выпуска {value} не может быть больше текущего.')
-            raise serializers.ValidationError(message)
+        year_validator(value)
         return value
 
     class Meta:
