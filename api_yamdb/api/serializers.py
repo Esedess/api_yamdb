@@ -15,14 +15,10 @@ class SignUpSerializer(UsernameValidationMixin, serializers.Serializer):
     username = serializers.CharField(
         required=True,
         max_length=150,
-        allow_null=False,
-        allow_blank=False,
     )
     email = serializers.EmailField(
         required=True,
         max_length=254,
-        allow_null=False,
-        allow_blank=False,
     )
 
 
@@ -44,10 +40,8 @@ class TokenSerializer(UsernameValidationMixin, serializers.Serializer):
     username = serializers.CharField(
         required=True,
         max_length=150,
-        allow_null=False,
-        allow_blank=False,
     )
-    confirmation_code = serializers.CharField(allow_blank=False)
+    confirmation_code = serializers.CharField(required=True)
 
 
 class CategorуSerializer(serializers.ModelSerializer):
@@ -80,15 +74,7 @@ class TitleSerializer(serializers.ModelSerializer):
             'genre',
             'category',
         )
-        read_only_fields = (
-            'id',
-            'name',
-            'year',
-            'rating',
-            'description',
-            'genre',
-            'category',
-        )
+        read_only_fields = fields
 
 
 class TitleCreateUpdateSerializer(serializers.ModelSerializer):

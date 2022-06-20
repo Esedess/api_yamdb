@@ -16,6 +16,10 @@ ROLE_CHOICES = (
 )
 
 
+def current_year():
+    return datetime.now().year
+
+
 class User(AbstractUser):
     username = models.CharField(
         'Имя пользователя',
@@ -95,6 +99,7 @@ class CategoryAndGenreDaddy(models.Model):
 
     class Meta:
         ordering = ('name',)
+        abstract = True
 
     def __str__(self):
         return self.slug
@@ -102,13 +107,14 @@ class CategoryAndGenreDaddy(models.Model):
 
 class Categorу(CategoryAndGenreDaddy):
 
-    class Meta:
+    class Meta(CategoryAndGenreDaddy.Meta):
         verbose_name = 'Категория'
         verbose_name_plural = 'Категории'
 
 
 class Genre(CategoryAndGenreDaddy):
-    class Meta:
+
+    class Meta(CategoryAndGenreDaddy.Meta):
         verbose_name = 'Жанр'
         verbose_name_plural = 'Жанры'
 
@@ -121,7 +127,7 @@ class Title(models.Model):
         verbose_name='Год',
         validators=(
             MaxValueValidator(
-                int(datetime.now().year),
+                current_year,
                 'Произведения из будущего не принимаем'
             ),
         )
@@ -177,6 +183,12 @@ class GenreTitle(models.Model):
 
 
 class ReviewAndCommentDaddy(models.Model):
+    author = models.ForeignKey(
+        User,
+        verbose_name='Автор',
+        on_delete=models.CASCADE,
+        related_name="%(class)s"
+    )
     text = models.TextField(
         verbose_name='Текст отзыва'
     )
@@ -186,6 +198,7 @@ class ReviewAndCommentDaddy(models.Model):
     )
 
     class Meta:
+        ordering = ('-pub_date', )
         abstract = True
 
     def __str__(self):
@@ -199,24 +212,16 @@ class Review(ReviewAndCommentDaddy):
         on_delete=models.CASCADE,
         related_name='reviews'
     )
-    author = models.ForeignKey(
-        User,
-        verbose_name='Автор отзыва',
-        on_delete=models.CASCADE,
-        related_name='reviews'
-    )
     score = models.PositiveSmallIntegerField(
         verbose_name='Оценка',
-        default=0,
+        default=1,
         validators=(
             MaxValueValidator(10, 'Значения рейтинга от 1 до 10'),
             MinValueValidator(1, 'Значения рейтинга от 1 до 10')
         )
     )
-    rating = models.PositiveSmallIntegerField(blank=True, null=True)
 
-    class Meta:
-        ordering = ('-pub_date', )
+    class Meta(ReviewAndCommentDaddy.Meta):
         verbose_name = 'Отзыв'
         verbose_name_plural = 'Отзывы'
         constraints = [
@@ -234,14 +239,7 @@ class Comment(ReviewAndCommentDaddy):
         on_delete=models.CASCADE,
         related_name='comments'
     )
-    author = models.ForeignKey(
-        User,
-        verbose_name='Автор комментария',
-        on_delete=models.CASCADE,
-        related_name='comments'
-    )
 
-    class Meta:
-        ordering = ('-pub_date', )
+    class Meta(ReviewAndCommentDaddy.Meta):
         verbose_name = 'Комментарий'
         verbose_name_plural = 'Комментарии'

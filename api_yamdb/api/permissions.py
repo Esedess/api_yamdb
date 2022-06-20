@@ -9,9 +9,6 @@ class ReadOnly(permissions.BasePermission):
     def has_permission(self, request, view):
         return request.method in permissions.SAFE_METHODS
 
-    def has_object_permission(self, request, view, obj):
-        return request.method in permissions.SAFE_METHODS
-
 
 class IsAdmin(permissions.BasePermission):
     """
@@ -24,28 +21,19 @@ class IsAdmin(permissions.BasePermission):
     def has_permission(self, request, view):
         return request.user.is_authenticated and request.user.is_admin
 
-    def has_object_permission(self, request, view, obj):
-        return request.user.is_authenticated and request.user.is_admin
 
-
-class IsModerator(permissions.BasePermission):
-    """
-    Права доступа: Модератор.
-    read: moderator
-    write: moderator
-    """
-    def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.is_moderator
-
-    def has_object_permission(self, request, view, obj):
-        return request.user.is_authenticated and request.user.is_moderator
-
-
-class IsAuthenticatedOrOwner(permissions.IsAuthenticated):
+class IsAdminModeratorOwnerOrReadOnly(permissions.IsAuthenticatedOrReadOnly):
     """
     Права доступа: Администратор, Модератор, Автор или только чтение.
-    read, POST: authenticated
-    UPDATE, DELETE: author
+    read: any
+    post: authenticated
+    patch|delete: author, moderator, admin
     """
     def has_object_permission(self, request, view, obj):
-        return obj.author == request.user
+        return (
+            request.method in permissions.SAFE_METHODS
+            or (not request.user.is_anonymous and (
+                request.user.is_admin
+                or request.user.is_moderator
+                or obj.author == request.user))
+        )
